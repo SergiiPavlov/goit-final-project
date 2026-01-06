@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Lehlehka API
-  version: 0.7.0
+  version: 0.8.0
   description: Backend API for Lehlehka (Next + Node) team project.
 servers:
   - url: http://localhost:4000
@@ -17,6 +17,10 @@ tags:
     description: Daily tasks (to-do) endpoints.
   - name: diaries
     description: Daily diary entries endpoints.
+  - name: emotions
+    description: Emotions reference endpoints (used by diary entries).
+  - name: weeks
+    description: Pregnancy weeks (baby development, mom state, and dashboard info).
 
 components:
   securitySchemes:
@@ -74,6 +78,85 @@ components:
         refreshToken:
           type: string
       required: [accessToken, refreshToken]
+
+    WeekBabyState:
+      type: object
+      properties:
+        id: { type: string }
+        weekNumber: { type: integer, minimum: 1, maximum: 40 }
+        image: { type: string, nullable: true }
+        babySize: { type: string, nullable: true }
+        babyWeight: { type: string, nullable: true }
+        analogy: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+        babyActivities:
+          type: array
+          items: { type: string }
+        momDailyTips:
+          type: array
+          items: { type: string }
+      required: [id, weekNumber, babyActivities, momDailyTips]
+
+    WeekMomState:
+      type: object
+      properties:
+        id: { type: string }
+        weekNumber: { type: integer, minimum: 1, maximum: 40 }
+        image: { type: string, nullable: true }
+        changes:
+          type: array
+          items: { type: string }
+        comfortTips:
+          type: array
+          items:
+            type: object
+            properties:
+              category: { type: string }
+              tips:
+                type: array
+                items: { type: string }
+            required: [category, tips]
+      required: [id, weekNumber, changes, comfortTips]
+
+    WeekDashboardInfo:
+      type: object
+      properties:
+        weekNumber: { type: integer, minimum: 1, maximum: 40 }
+        baby:
+          type: object
+          properties:
+            weekNumber: { type: integer }
+            image: { type: string, nullable: true }
+            babySize: { type: string, nullable: true }
+            babyWeight: { type: string, nullable: true }
+            analogy: { type: string, nullable: true }
+          required: [weekNumber]
+        mom:
+          type: object
+          properties:
+            weekNumber: { type: integer }
+            image: { type: string, nullable: true }
+            tip:
+              nullable: true
+              type: object
+              properties:
+                category: { type: string }
+                tip: { type: string }
+              required: [category, tip]
+          required: [weekNumber]
+        momDailyTip:
+          type: string
+          nullable: true
+      required: [weekNumber, baby, mom, momDailyTip]
+
+    CurrentWeekResponse:
+      type: object
+      properties:
+        weekNumber: { type: integer, minimum: 1, maximum: 40 }
+        daysToChildbirth: { type: integer, minimum: 0 }
+        dashboard:
+          $ref: '#/components/schemas/WeekDashboardInfo'
+      required: [weekNumber, daysToChildbirth, dashboard]
 
     RegisterRequest:
       type: object
@@ -656,6 +739,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /api/emotions:
+    get:
+      tags: [emotions]
+      summary: List emotions
+      description: Public reference list of emotions for diary entries.
+      responses:
+        '200':
+          description: Emotions list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmotionRef'
+
+  /api/emotions/{id}:
+    get:
+      tags: [emotions]
+      summary: Get emotion by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Emotion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmotionRef'
         '404':
           description: Not found
           content:
@@ -769,28 +885,109 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-    delete:
-      tags: [diaries]
-      summary: Delete diary entry
-      security:
-        - bearerAuth: []
+
+
+  /api/weeks/{weekNumber}:
+    get:
+      tags: [weeks]
+      summary: Get week dashboard info (public)
       parameters:
         - in: path
-          name: id
+          name: weekNumber
           required: true
           schema:
-            type: string
+            type: integer
+            minimum: 1
+            maximum: 40
       responses:
         '200':
           description: OK
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                required: [ok]
+                $ref: '#/components/schemas/WeekDashboardInfo'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/weeks/current:
+    get:
+      tags: [weeks]
+      summary: Get current week and dashboard info for authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeekCurrentInfo'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/weeks/{weekNumber}/baby:
+    get:
+      tags: [weeks]
+      summary: Getetrieve baby development by week (private)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: weekNumber
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 40
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeekBabyState'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/weeks/{weekNumber}/mom:
+    get:
+      tags: [weeks]
+      summary: Retrieve mom body state by week (private)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: weekNumber
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 40
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeekMomState'
         '401':
           description: Unauthorized
           content:
