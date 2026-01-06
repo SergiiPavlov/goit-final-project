@@ -8,6 +8,7 @@ import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../../uti
 import { addMs, parseDateYYYYMMDD } from '../../utils/time.js';
 
 import type { LoginInput, RegisterInput } from './auth.schemas.js';
+import { type StringValue } from 'ms';
 
 type TokenPair = { accessToken: string; refreshToken: string };
 
@@ -41,7 +42,7 @@ async function createSessionAndTokens(userId: string): Promise<{ tokens: TokenPa
       userId,
       // Temporary unique value; will be replaced immediately after we build the refresh JWT.
       refreshTokenHash: `temp-${crypto.randomUUID()}`,
-      expiresAt: addMs(new Date(), env.jwtRefreshTtl),
+      expiresAt: addMs(new Date(), env.jwtRefreshTtl as StringValue),
     },
     select: { id: true },
   });
@@ -53,7 +54,7 @@ async function createSessionAndTokens(userId: string): Promise<{ tokens: TokenPa
     where: { id: session.id },
     data: {
       refreshTokenHash,
-      expiresAt: addMs(new Date(), env.jwtRefreshTtl),
+      expiresAt: addMs(new Date(), env.jwtRefreshTtl as StringValue),
     },
   });
 
@@ -139,7 +140,7 @@ export async function refresh(refreshToken: string) {
     where: { id: session.id },
     data: {
       refreshTokenHash: newRefreshHash,
-      expiresAt: addMs(new Date(), env.jwtRefreshTtl),
+      expiresAt: addMs(new Date(), env.jwtRefreshTtl as StringValue),
     },
   });
 

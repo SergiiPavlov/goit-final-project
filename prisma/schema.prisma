@@ -101,20 +101,24 @@ model DiaryEntryEmotion {
 model WeekBabyState {
   weekNumber      Int      @id @map("week_number")
   analogy         String?
-  babySize        Int      @map("baby_size")
-  babyWeight      Int      @map("baby_weight")
+  // Source JSON contains fractional values for early weeks (e.g. 0.1, 0.2),
+  // so these fields must be Float (not Int).
+  babySize        Float    @map("baby_size")
+  babyWeight      Float    @map("baby_weight")
   image           String
   babyActivity    String   @db.Text @map("baby_activity")
   babyDevelopment String   @db.Text @map("baby_development")
   interestingFact String   @db.Text @map("interesting_fact")
-  momDailyTips    String[] @map("mom_daily_tips")
+  // Keep array fields non-nullable on DB level (default empty array)
+  // to simplify API and avoid null-handling in app code.
+  momDailyTips    String[] @default([]) @map("mom_daily_tips")
 
   @@map("week_baby_states")
 }
 
 model WeekMomState {
   weekNumber    Int      @id @map("week_number")
-  feelingsStates String[] @map("feelings_states")
+  feelingsStates String[] @default([]) @map("feelings_states")
   sensationDescr String   @db.Text @map("sensation_descr")
   comfortTips    Json     @map("comfort_tips")
 
