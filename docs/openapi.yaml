@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Lehlehka API
-  version: 0.5.0
+  version: 0.7.0
   description: Backend API for Lehlehka (Next + Node) team project.
 servers:
   - url: http://localhost:4000
@@ -13,6 +13,10 @@ tags:
     description: Authentication (access+refresh) and sessions.
   - name: users
     description: User profile endpoints.
+  - name: tasks
+    description: Daily tasks (to-do) endpoints.
+  - name: diaries
+    description: Daily diary entries endpoints.
 
 components:
   securitySchemes:
@@ -146,6 +150,156 @@ components:
               $ref: '#/components/schemas/PublicUser'
           required: [user]
         - $ref: '#/components/schemas/AuthTokens'
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+        date:
+          type: string
+          format: date
+        isDone:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, userId, name, date, isDone, createdAt, updatedAt]
+
+    CreateTaskRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 96
+        date:
+          type: string
+          format: date
+          description: YYYY-MM-DD
+        isDone:
+          type: boolean
+          default: false
+      required: [name, date]
+
+    UpdateTaskStatusRequest:
+      type: object
+      properties:
+        isDone:
+          type: boolean
+      required: [isDone]
+
+    TaskListResponse:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+      required: [date, tasks]
+
+    EmotionRef:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+      required: [id, title]
+
+    DiaryEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        date:
+          type: string
+          format: date
+        emotions:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmotionRef'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, userId, title, description, date, emotions, createdAt, updatedAt]
+
+    CreateDiaryRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 64
+        description:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        date:
+          type: string
+          format: date
+          description: YYYY-MM-DD (optional, defaults to today)
+        emotions:
+          type: array
+          minItems: 1
+          maxItems: 12
+          items:
+            type: string
+      required: [title, description, emotions]
+
+    UpdateDiaryRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 64
+        description:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        date:
+          type: string
+          format: date
+          description: YYYY-MM-DD
+        emotions:
+          type: array
+          minItems: 1
+          maxItems: 12
+          items:
+            type: string
+      additionalProperties: false
+
+    DiaryListResponse:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiaryEntry'
+      required: [date, entries]
 
 paths:
   /health:
@@ -398,6 +552,253 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/tasks:
+    get:
+      tags: [tasks]
+      summary: Get tasks for a date (defaults to today)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: date
+          schema:
+            type: string
+            format: date
+          description: YYYY-MM-DD
+      responses:
+        '200':
+          description: Tasks list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [tasks]
+      summary: Create task
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/tasks/{id}:
+    patch:
+      tags: [tasks]
+      summary: Change task status
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskStatusRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/diaries:
+    get:
+      tags: [diaries]
+      summary: Get diary entries for a date (defaults to today)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: date
+          schema:
+            type: string
+            format: date
+          description: YYYY-MM-DD
+      responses:
+        '200':
+          description: Diary entries list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiaryListResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [diaries]
+      summary: Create diary entry
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDiaryRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiaryEntry'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/diaries/{id}:
+    patch:
+      tags: [diaries]
+      summary: Update diary entry
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDiaryRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiaryEntry'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [diaries]
+      summary: Delete diary entry
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required: [ok]
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
           content:
             application/json:
               schema:
