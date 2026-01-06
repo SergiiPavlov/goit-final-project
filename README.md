@@ -1,23 +1,25 @@
-# Lehlehka Backend (PR-04 Auth)
+# Lehlehka Backend
 
-This is PR-04 of the backend plan for the **Lehlehka** team project.
+Backend API for the **Lehlehka** team project.
 
-## What's included
-- Express + TypeScript skeleton (PR-01)
-- Prisma + PostgreSQL schema (PR-02)
-- Seed from JSON data (PR-03)
-- **Auth (PR-04)**:
-  - `POST /api/auth/register`
-  - `POST /api/auth/login`
-  - `POST /api/auth/refresh` (refresh rotation, sessions stored in DB)
-  - `POST /api/auth/logout` (Bearer access token; optionally invalidate one session)
+## What's included (up to PR-10)
+- Express + TypeScript skeleton
+- Prisma + PostgreSQL schema
+- Seed from JSON data (emotions / mom states / baby states)
+- Auth (access + refresh, sessions stored in DB)
+- Users: get current user, update profile, upload avatar
+- Tasks: create, list by date, update isDone
+- Diaries: create + list by date
+- Reference data: emotions + weeks dashboard
+- Weeks: public week dashboard + private endpoints (current / baby / mom)
+- Swagger UI + raw OpenAPI spec endpoints
 
 ## Requirements
 - Node.js 18+ (recommended 20+)
 - PostgreSQL (local or cloud)
 - npm
 
-## Setup
+## Setup (local)
 1) Install dependencies
 ```bash
 npm install
@@ -46,6 +48,11 @@ npm run prisma:seed
 ```bash
 npm run dev
 ```
+
+## Swagger / OpenAPI
+- Swagger UI: `GET /docs`
+- Raw spec (YAML): `GET /docs/openapi.yaml`
+- Raw spec (JSON): `GET /docs/openapi.json`
 
 ## Quick test (curl)
 Register:
@@ -77,10 +84,11 @@ curl -s -X POST http://localhost:4000/api/auth/logout \
   -d '{}'
 ```
 
-## Useful URLs
-- Health check: `GET /health`
-- DB check: `GET /health/db`
-- Swagger UI: `GET /docs`
+## Smoke tests
+See `docs/smoke.md`.
+
+## Deploy
+See `docs/deploy-render.md`.
 
 ## Notes
-- Next PR: Users (me, update profile, avatar upload) + protected routes base.
+- Uploads are served from `/uploads/*`. In production you will likely want a persistent disk or object storage.
