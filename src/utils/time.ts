@@ -1,6 +1,6 @@
-import ms from 'ms';
+import ms, { type StringValue } from 'ms';
 
-export function addMs(date: Date, duration: string): Date {
+export function addMs(date: Date, duration: StringValue): Date {
   const delta = ms(duration);
   if (typeof delta !== 'number' || !Number.isFinite(delta) || delta <= 0) {
     throw new Error(`Invalid duration: ${duration}`);

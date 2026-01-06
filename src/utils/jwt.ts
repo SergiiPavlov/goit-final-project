@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import type { StringValue } from 'ms';
 import { env } from '../config/env.js';
 
 export type AccessTokenPayload = {
@@ -14,12 +15,12 @@ export type RefreshTokenPayload = {
 
 export function signAccessToken(userId: string): string {
   const payload: AccessTokenPayload = { sub: userId, type: 'access' };
-  return jwt.sign(payload, env.jwtAccessSecret, { expiresIn: env.jwtAccessTtl });
+  return jwt.sign(payload, env.jwtAccessSecret, { expiresIn: env.jwtAccessTtl as unknown as StringValue });
 }
 
 export function signRefreshToken(userId: string, sessionId: string): string {
   const payload: RefreshTokenPayload = { sub: userId, sessionId, type: 'refresh' };
-  return jwt.sign(payload, env.jwtRefreshSecret, { expiresIn: env.jwtRefreshTtl });
+  return jwt.sign(payload, env.jwtRefreshSecret, { expiresIn: env.jwtRefreshTtl as unknown as StringValue });
 }
 
 export function verifyAccessToken(token: string): AccessTokenPayload {
