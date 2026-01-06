@@ -43,6 +43,16 @@ export function createApp() {
 
   const openapiPath = path.join(__dirname, '../docs/openapi.yaml');
   const spec = YAML.load(openapiPath);
+
+  // Expose raw OpenAPI spec for tooling (curl, Postman, CI, etc.)
+  // while keeping Swagger UI at /docs.
+  app.get('/docs/openapi.yaml', (_req, res) => {
+    res.type('text/yaml').sendFile(openapiPath);
+  });
+  app.get('/docs/openapi.json', (_req, res) => {
+    res.json(spec);
+  });
+
   app.use('/docs', swaggerUi.serve, swaggerUi.setup(spec));
 
   // Serve uploaded files (avatars) in dev/prod.
