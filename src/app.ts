@@ -11,6 +11,10 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { prisma } from './db/prisma.js';
 import { authRouter } from './modules/auth/auth.router.js';
 import { usersRouter } from './modules/users/users.router.js';
+import { tasksRouter } from './modules/tasks/tasks.router.js';
+import { diariesRouter } from './modules/diaries/diaries.router.js';
+import { emotionsRouter } from './modules/emotions/emotions.router.js';
+import { weeksRouter } from './modules/weeks/weeks.router.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -48,6 +52,10 @@ export function createApp() {
 
   app.use('/api/auth', authRouter);
   app.use('/api/users', usersRouter);
+  app.use('/api/tasks', tasksRouter);
+  app.use('/api/diaries', diariesRouter);
+  app.use('/api/emotions', emotionsRouter);
+  app.use('/api/weeks', weeksRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
