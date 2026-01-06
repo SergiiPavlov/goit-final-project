@@ -24,6 +24,13 @@ export function notFoundHandler(req: Request, _res: Response, next: NextFunction
 }
 
 export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
+  // In development we want stack traces in the terminal to debug 500s.
+  // Keep the HTTP response generic to avoid leaking internals.
+  if (process.env.NODE_ENV !== 'production') {
+    // eslint-disable-next-line no-console
+    console.error('[errorHandler]', err);
+  }
+
   const isHttp = err instanceof HttpError;
 
   const status = isHttp ? err.status : 500;
