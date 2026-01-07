@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { prisma } from '../../db/prisma.js';
+import { HttpError } from '../../middleware/errorHandler.js';
 import { parseMultipartSingleFile } from '../../utils/multipart.js';
 
 export type PublicUserDto = {
@@ -32,10 +33,7 @@ function toPublicUser(user: User): PublicUserDto {
 export async function getCurrentUser(userId: string): Promise<PublicUserDto> {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) {
-    const err = new Error('User not found');
-    // @ts-expect-error attach code for error handler
-    err.status = 404;
-    throw err;
+    throw new HttpError(404, 'User not found', { code: 'NOT_FOUND' });
   }
   return toPublicUser(user);
 }
@@ -85,28 +83,19 @@ export async function updateAvatarFile(userId: string, input: AvatarUploadInput)
   });
 
   if (!file) {
-    const err = new Error('Avatar file is required');
-    // @ts-expect-error attach code for error handler
-    err.status = 400;
-    throw err;
+    throw new HttpError(400, 'Avatar file is required', { code: 'VALIDATION_ERROR' });
   }
 
   const mime = file.contentType || 'application/octet-stream';
   const ext = extFromMime(mime) || path.extname(file.filename || '');
   const safeExt = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext.toLowerCase()) ? ext.toLowerCase() : null;
   if (!safeExt) {
-    const err = new Error('Unsupported avatar file type');
-    // @ts-expect-error attach code for error handler
-    err.status = 400;
-    throw err;
+    throw new HttpError(400, 'Unsupported avatar file type', { code: 'VALIDATION_ERROR' });
   }
 
   // 5MB limit already enforced at the router layer, but keep a guard.
   if (file.data.length === 0 || file.data.length > 5 * 1024 * 1024) {
-    const err = new Error('Invalid avatar size');
-    // @ts-expect-error attach code for error handler
-    err.status = 400;
-    throw err;
+    throw new HttpError(400, 'Invalid avatar size', { code: 'VALIDATION_ERROR' });
   }
 
   await fs.mkdir(AVATAR_DIR, { recursive: true });

@@ -3,7 +3,7 @@ import type { AuthenticatedRequest } from '../../middleware/auth.js';
 
 import { HttpError } from '../../middleware/errorHandler.js';
 
-import { getCurrentWeekInfo, getWeekBabyState, getWeekDashboardInfo, getWeekMomState } from './weeks.service.js';
+import { getCurrentWeekInfo, getWeekBabyState, getWeekDashboardInfoPublic, getWeekMomState } from './weeks.service.js';
 
 export const weeksController = {
   // Public: week dashboard info by weekNumber
@@ -12,7 +12,8 @@ export const weeksController = {
     if (!Number.isInteger(weekNumber) || weekNumber < 1 || weekNumber > 40) {
       throw new HttpError(400, 'Invalid weekNumber', { code: 'INVALID_WEEK_NUMBER' });
     }
-    const info = await getWeekDashboardInfo(weekNumber);
+    const dueDate = typeof req.query.dueDate === 'string' ? req.query.dueDate : undefined;
+    const info = await getWeekDashboardInfoPublic(weekNumber, dueDate);
     res.status(200).json(info);
   },
 
