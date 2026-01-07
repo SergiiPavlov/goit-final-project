@@ -81,82 +81,76 @@ components:
 
     WeekBabyState:
       type: object
+      description: Baby development state for a given week (private).
       properties:
-        id: { type: string }
         weekNumber: { type: integer, minimum: 1, maximum: 40 }
-        image: { type: string, nullable: true }
-        babySize: { type: string, nullable: true }
-        babyWeight: { type: string, nullable: true }
         analogy: { type: string, nullable: true }
-        description: { type: string, nullable: true }
-        babyActivities:
-          type: array
-          items: { type: string }
+        babySize: { type: number }
+        babyWeight: { type: number }
+        image: { type: string }
+        babyActivity: { type: string }
+        babyDevelopment: { type: string }
+        interestingFact: { type: string }
         momDailyTips:
           type: array
           items: { type: string }
-      required: [id, weekNumber, babyActivities, momDailyTips]
+      required: [weekNumber, babySize, babyWeight, image, babyActivity, babyDevelopment, interestingFact, momDailyTips]
+
+    WeekMomComfortTip:
+      type: object
+      properties:
+        category: { type: string }
+        tip: { type: string }
+      required: [category, tip]
 
     WeekMomState:
       type: object
+      description: Mom body/feelings state for a given week (private).
       properties:
-        id: { type: string }
         weekNumber: { type: integer, minimum: 1, maximum: 40 }
-        image: { type: string, nullable: true }
-        changes:
+        feelingsStates:
           type: array
           items: { type: string }
+        sensationDescr: { type: string }
         comfortTips:
           type: array
           items:
-            type: object
-            properties:
-              category: { type: string }
-              tips:
-                type: array
-                items: { type: string }
-            required: [category, tips]
-      required: [id, weekNumber, changes, comfortTips]
+            $ref: '#/components/schemas/WeekMomComfortTip'
+      required: [weekNumber, feelingsStates, sensationDescr, comfortTips]
 
     WeekDashboardInfo:
       type: object
+      description: Dashboard info for a given pregnancy week (public). May include daysToChildbirth when dueDate query is provided.
       properties:
         weekNumber: { type: integer, minimum: 1, maximum: 40 }
+        daysToChildbirth: { type: integer, minimum: 0, nullable: true }
         baby:
           type: object
           properties:
-            weekNumber: { type: integer }
-            image: { type: string, nullable: true }
-            babySize: { type: string, nullable: true }
-            babyWeight: { type: string, nullable: true }
+            weekNumber: { type: integer, minimum: 1, maximum: 40 }
+            image: { type: string }
+            babySize: { type: number }
+            babyWeight: { type: number }
             analogy: { type: string, nullable: true }
-          required: [weekNumber]
-        mom:
+          required: [weekNumber, image, babySize, babyWeight, analogy]
+        momTip:
           type: object
           properties:
-            weekNumber: { type: integer }
-            image: { type: string, nullable: true }
-            tip:
+            dailyTip: { type: string, nullable: true }
+            comfortTip:
+              allOf:
+                - $ref: '#/components/schemas/WeekMomComfortTip'
               nullable: true
-              type: object
-              properties:
-                category: { type: string }
-                tip: { type: string }
-              required: [category, tip]
-          required: [weekNumber]
-        momDailyTip:
-          type: string
-          nullable: true
-      required: [weekNumber, baby, mom, momDailyTip]
+          required: [dailyTip, comfortTip]
+      required: [weekNumber, baby, momTip]
 
-    CurrentWeekResponse:
-      type: object
-      properties:
-        weekNumber: { type: integer, minimum: 1, maximum: 40 }
-        daysToChildbirth: { type: integer, minimum: 0 }
-        dashboard:
-          $ref: '#/components/schemas/WeekDashboardInfo'
-      required: [weekNumber, daysToChildbirth, dashboard]
+    CurrentWeekInfo:
+      allOf:
+        - $ref: '#/components/schemas/WeekDashboardInfo'
+        - type: object
+          properties:
+            daysToChildbirth: { type: integer, minimum: 0 }
+          required: [daysToChildbirth]
 
     RegisterRequest:
       type: object
@@ -739,6 +733,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/emotions:
     get:
@@ -886,7 +886,39 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-
+    delete:
+      tags: [diaries]
+      summary: Delete diary entry
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                required: [id]
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/weeks/{weekNumber}:
     get:
       tags: [weeks]
@@ -899,6 +931,13 @@ paths:
             type: integer
             minimum: 1
             maximum: 40
+        - in: query
+          name: dueDate
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Optional. If provided, response includes daysToChildbirth.
       responses:
         '200':
           description: OK
@@ -906,6 +945,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WeekDashboardInfo'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Not found
           content:
@@ -925,7 +970,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/WeekCurrentInfo'
+                $ref: '#/components/schemas/CurrentWeekInfo'
         '401':
           description: Unauthorized
           content:
