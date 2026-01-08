@@ -44,10 +44,32 @@ export function createApp() {
   const openapiPath = path.join(__dirname, '../docs/openapi.yaml');
   const spec = YAML.load(openapiPath);
 
+  // Make Swagger "Try it out" work both locally and in production.
+  // By default we use a relative server URL (`/`) so Swagger calls the same origin
+  // where the docs are opened (localhost, Render, etc.).
+  //
+  // If you need to point Swagger to another host (e.g., separate API domain),
+  // set SWAGGER_SERVER_URL.
+  const rawSwaggerServerUrl =
+    process.env.SWAGGER_SERVER_URL ||
+    process.env.PUBLIC_BASE_URL ||
+    process.env.APP_URL ||
+    process.env.RENDER_EXTERNAL_URL;
+
+  const normalizeServerUrl = (u: string) => {
+    const trimmed = u.trim();
+    if (!trimmed) return '/';
+    if (trimmed === '/') return '/';
+    return trimmed.replace(/\/+$/, '');
+  };
+
+  spec.servers = [{ url: rawSwaggerServerUrl ? normalizeServerUrl(rawSwaggerServerUrl) : '/' }];
+
   // Expose raw OpenAPI spec for tooling (curl, Postman, CI, etc.)
   // while keeping Swagger UI at /docs.
   app.get('/docs/openapi.yaml', (_req, res) => {
-    res.type('text/yaml').sendFile(openapiPath);
+    // Serve the patched spec (with correct `servers`) instead of the raw file.
+    res.type('text/yaml').send(YAML.stringify(spec, 10, 2));
   });
   app.get('/docs/openapi.json', (_req, res) => {
     res.json(spec);
