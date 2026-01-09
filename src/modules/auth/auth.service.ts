@@ -80,6 +80,8 @@ export async function register(input: RegisterInput) {
       passwordHash,
       gender: input.gender ?? null,
       dueDate,
+      // Default avatar is applied on backend so frontend can rely on a stable URL
+      avatarUrl: env.defaultAvatarUrl || null,
     },
   });
 

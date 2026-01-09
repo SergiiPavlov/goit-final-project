@@ -21,6 +21,10 @@ const envSchema = z.object({
   CLOUDINARY_API_KEY: z.string().optional().default(''),
   CLOUDINARY_API_SECRET: z.string().optional().default(''),
   CLOUDINARY_FOLDER: z.string().optional().default('avatars'),
+
+  // Default avatar URL (served by Cloudinary or any public CDN)
+  // If not provided, avatarUrl will remain null until user uploads one.
+  DEFAULT_AVATAR_URL: z.string().url().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -49,4 +53,6 @@ export const env = {
     apiSecret: parsed.data.CLOUDINARY_API_SECRET,
     folder: parsed.data.CLOUDINARY_FOLDER,
   },
+
+  defaultAvatarUrl: parsed.data.DEFAULT_AVATAR_URL,
 };
