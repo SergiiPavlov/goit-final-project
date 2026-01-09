@@ -11,7 +11,17 @@ export function cookiesMiddleware() {
         const key = rawKey?.trim();
         if (!key) continue;
         const rawValue = rest.join('=').trim();
-        cookies[key] = rawValue ? decodeURIComponent(rawValue) : '';
+        if (!rawValue) {
+          cookies[key] = '';
+        } else {
+          try {
+            cookies[key] = decodeURIComponent(rawValue);
+          } catch {
+            // If malformed percent-encoding is provided, do not crash the request.
+            // Fall back to the raw value.
+            cookies[key] = rawValue;
+          }
+        }
       }
     }
 
