@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { corsMiddleware } from './middleware/cors.js';
+import { cookiesMiddleware } from './middleware/cookies.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { prisma } from './db/prisma.js';
 import { authRouter } from './modules/auth/auth.router.js';
@@ -22,9 +23,12 @@ const __dirname = path.dirname(__filename);
 export function createApp() {
   const app = express();
 
+  app.set('trust proxy', 1);
+
   app.use(helmet());
   app.use(corsMiddleware());
   app.use(express.json({ limit: '1mb' }));
+  app.use(cookiesMiddleware());
   app.use(morgan('dev'));
 
   app.get('/health', (_req, res) => {

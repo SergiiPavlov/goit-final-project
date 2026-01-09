@@ -16,6 +16,9 @@ const envSchema = z.object({
   JWT_REFRESH_TTL: z.string().min(1, 'JWT_REFRESH_TTL is required (e.g. 30d)'),
   BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(8).max(15).default(10),
 
+  COOKIE_SECURE: z.coerce.boolean().optional(),
+  COOKIE_SAMESITE: z.enum(['lax', 'none', 'strict']).optional(),
+
   // Cloudinary (optional, for avatar uploads)
   CLOUDINARY_CLOUD_NAME: z.string().optional().default(''),
   CLOUDINARY_API_KEY: z.string().optional().default(''),
@@ -46,6 +49,10 @@ export const env = {
   jwtAccessTtl: parsed.data.JWT_ACCESS_TTL,
   jwtRefreshTtl: parsed.data.JWT_REFRESH_TTL,
   bcryptSaltRounds: parsed.data.BCRYPT_SALT_ROUNDS,
+
+  cookieSecure: parsed.data.COOKIE_SECURE ?? parsed.data.NODE_ENV === 'production',
+  cookieSameSite:
+    parsed.data.COOKIE_SAMESITE ?? (parsed.data.NODE_ENV === 'production' ? 'none' : 'lax'),
 
   cloudinary: {
     cloudName: parsed.data.CLOUDINARY_CLOUD_NAME,
