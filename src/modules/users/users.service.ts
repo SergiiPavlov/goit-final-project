@@ -5,6 +5,8 @@ import path from 'node:path';
 import { prisma } from '../../db/prisma.js';
 import { HttpError } from '../../middleware/errorHandler.js';
 import { parseMultipartSingleFile } from '../../utils/multipart.js';
+import { env } from '../../config/env.js';
+import { uploadImageToCloudinary } from '../../utils/cloudinary.js';
 
 export type PublicUserDto = {
   id: string;
@@ -100,10 +102,37 @@ export async function updateAvatarFile(userId: string, input: AvatarUploadInput)
 
   await fs.mkdir(AVATAR_DIR, { recursive: true });
   const filename = `${crypto.randomUUID()}${safeExt === '.jpeg' ? '.jpg' : safeExt}`;
-  const filePath = path.join(AVATAR_DIR, filename);
-  await fs.writeFile(filePath, file.data);
 
-  const avatarUrl = `/uploads/avatars/${filename}`;
+  const cloud = env.cloudinary;
+  const cloudEnabled =
+    Boolean(cloud.cloudName) && Boolean(cloud.apiKey) && Boolean(cloud.apiSecret);
+
+  let avatarUrl: string;
+
+  if (cloudEnabled) {
+    // Upload to Cloudinary and store the public HTTPS URL in DB.
+    const uploaded = await uploadImageToCloudinary(
+      {
+        cloudName: cloud.cloudName,
+        apiKey: cloud.apiKey,
+        apiSecret: cloud.apiSecret,
+        folder: cloud.folder || 'avatars',
+      },
+      {
+        data: file.data,
+        mime: file.mime,
+        // stable id makes it easier to overwrite previous avatar
+        publicId: `user_${userId}`,
+      }
+    );
+    avatarUrl = uploaded.url;
+  } else {
+    // Local fallback (development only / if Cloudinary is not configured)
+    const filePath = path.join(AVATAR_DIR, filename);
+    await fs.writeFile(filePath, file.data);
+    avatarUrl = `/uploads/avatars/${filename}`;
+  }
+
   const user = await prisma.user.update({
     where: { id: userId },
     data: { avatarUrl },

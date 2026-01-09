@@ -15,6 +15,12 @@ const envSchema = z.object({
   JWT_ACCESS_TTL: z.string().min(1, 'JWT_ACCESS_TTL is required (e.g. 15m)'),
   JWT_REFRESH_TTL: z.string().min(1, 'JWT_REFRESH_TTL is required (e.g. 30d)'),
   BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(8).max(15).default(10),
+
+  // Cloudinary (optional, for avatar uploads)
+  CLOUDINARY_CLOUD_NAME: z.string().optional().default(''),
+  CLOUDINARY_API_KEY: z.string().optional().default(''),
+  CLOUDINARY_API_SECRET: z.string().optional().default(''),
+  CLOUDINARY_FOLDER: z.string().optional().default('avatars'),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -36,4 +42,11 @@ export const env = {
   jwtAccessTtl: parsed.data.JWT_ACCESS_TTL,
   jwtRefreshTtl: parsed.data.JWT_REFRESH_TTL,
   bcryptSaltRounds: parsed.data.BCRYPT_SALT_ROUNDS,
+
+  cloudinary: {
+    cloudName: parsed.data.CLOUDINARY_CLOUD_NAME,
+    apiKey: parsed.data.CLOUDINARY_API_KEY,
+    apiSecret: parsed.data.CLOUDINARY_API_SECRET,
+    folder: parsed.data.CLOUDINARY_FOLDER,
+  },
 };
