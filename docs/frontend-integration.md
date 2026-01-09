@@ -8,9 +8,9 @@
 
 ## 0) Что важно понять сразу (1 минута)
 
-1) Наш backend использует **JWT токены в JSON** (accessToken/refreshToken).
-2) Мы **не используем cookies** для авторизации (нет Set-Cookie).
-3) Для приватных запросов фронт обязан отправлять:
+1. Наш backend использует **JWT токены в JSON** (accessToken/refreshToken).
+2. Мы **не используем cookies** для авторизации (нет Set-Cookie).
+3. Для приватных запросов фронт обязан отправлять:
    `Authorization: Bearer <accessToken>`
 
 Это “нормальный” подход для SPA/CSR, и он хорошо тестируется через Swagger/curl.
@@ -20,10 +20,12 @@
 ## 1) Где смотреть документацию API
 
 ### Swagger UI
+
 - `GET /docs` — интерфейс Swagger (кнопка “Authorize” для Bearer)
 - `GET /docs/openapi.yaml` — yaml-контракт
 
 Важно:
+
 - Swagger — это **контракт для команды**.
 - Источник истины по факту поведения — **реальный ответ сервера** (если вдруг Swagger расходится — сообщите backend-команде).
 
@@ -32,7 +34,20 @@
 ## 2) База URL (куда фронт шлёт запросы)
 
 ### Локально (dev)
+
 - Backend: `http://localhost:4000`
+
+### Production (Render)
+
+- Backend: `https://<ваш-render-домен>.onrender.com`
+
+---
+
+## 3) Переменные окружения для фронта
+
+### Next.js
+
+Файл: `.env.local`
 
 ### Production (Render)
 - Backend: `https://<ваш-render-домен>.onrender.com`
@@ -226,26 +241,99 @@ GET /api/weeks/1?dueDate=2026-12-31
 
 Если dueDate не передать — поля не будет. Это нормально.
 
-9) Avatar upload (multipart)
+9) Avatar upload (Cloudinary, multipart)
+Как работает загрузка аватара на backend
+
+Мы используем Cloudinary (как в домашнем задании).
+
+Файлы не хранятся локально на сервере
+
+Файл загружается в Cloudinary
+
+В базу данных сохраняется полный публичный URL
+
+Фронту не нужно ничего склеивать — URL уже готов
+
+Эндпоинт
 PATCH /api/users/avatar
+
+Требования к запросу
 
 Content-Type: multipart/form-data
 
-поле файла: avatar
+Заголовок авторизации:
 
-обязательно Authorization: Bearer <token>
+Authorization: Bearer <accessToken>
 
-Ответ:
 
-json
-Копіювати код
-{ "avatarUrl": "/uploads/avatars/filename.jpg" }
-Важно:
+Поле файла:
 
-avatarUrl — относительный путь
+avatar
 
-на фронте полный URL:
-${API_BASE_URL}${avatarUrl}
+Пример запроса (curl)
+curl -X PATCH http://localhost:4000/api/users/avatar \
+  -H "Authorization: Bearer <accessToken>" \
+  -F "avatar=@avatar.png"
+
+Ответ сервера
+{
+  "id": "uuid",
+  "name": "User Name",
+  "email": "user@example.com",
+  "avatarUrl": "https://res.cloudinary.com/<cloud_name>/image/upload/v123456/avatars/user_<id>.png",
+  "createdAt": "...",
+  "updatedAt": "..."
+}
+
+ВАЖНО ДЛЯ ФРОНТА
+
+avatarUrl — абсолютный URL
+
+Это уже готовая ссылка
+
+❌ НЕ нужно добавлять API_BASE_URL
+
+❌ НЕ нужно ничего преобразовывать
+
+Можно сразу использовать:
+
+<img src={user.avatarUrl} alt="User avatar" />
+
+Next.js: настройка next.config.js
+
+Так как изображения приходят с Cloudinary, обязательно добавьте домен:
+
+// next.config.js
+module.exports = {
+  images: {
+    domains: ['res.cloudinary.com'],
+  },
+};
+
+
+После этого можно безопасно использовать next/image:
+
+import Image from 'next/image';
+
+<Image
+  src={user.avatarUrl}
+  alt="Avatar"
+  width={128}
+  height={128}
+/>
+
+Что если пользователь не загрузил аватар
+
+В базе avatarUrl = null
+
+Backend не подставляет дефолт
+
+Решение на фронте:
+
+const avatarSrc = user.avatarUrl ?? '/avatar-placeholder.png';
+
+
+(плейсхолдер — ответственность фронта)
 
 10) Как увидеть “сколько живет токен” (exp)
 JWT обычно содержит поле exp (unix time).
@@ -341,4 +429,4 @@ curl -sS -i "$BASE/api/users/current" \
 
 убедитесь, что домен фронта добавлен в CORS_ORIGINS
 
-
+```
