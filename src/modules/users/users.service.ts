@@ -26,7 +26,8 @@ function toPublicUser(user: User): PublicUserDto {
     email: user.email,
     gender: user.gender ?? null,
     dueDate: user.dueDate ? user.dueDate.toISOString().slice(0, 10) : null,
-    avatarUrl: user.avatarUrl ?? null,
+    // if avatar wasn't uploaded yet, return a safe default URL
+    avatarUrl: user.avatarUrl ?? env.defaultAvatarUrl ?? null,
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
   };
