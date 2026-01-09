@@ -242,40 +242,41 @@ GET /api/weeks/1?dueDate=2026-12-31
 Если dueDate не передать — поля не будет. Это нормально.
 
 9) Avatar upload (Cloudinary, multipart)
-Как работает загрузка аватара на backend
+Як працює завантаження аватара на backend
 
-Мы используем Cloudinary (как в домашнем задании).
+Ми використовуємо Cloudinary (як у ДЗ).
 
-Файлы не хранятся локально на сервере — они загружаются в Cloudinary.
-В базу данных сохраняется полный публичный URL.
+Файли не зберігаються локально на сервері — вони завантажуються у Cloudinary.
 
-Default avatar (важно)
-- Если пользователь не загрузил аватар, backend возвращает default URL.
-- Default URL настраивается переменной DEFAULT_AVATAR_URL.
-- При регистрации мы сразу записываем avatarUrl в БД (default), поэтому фронт всегда получает валидный URL.
+У базу даних зберігається повний публічний URL (абсолютне посилання).
 
-Эндпоинт
+Default avatar (важливо)
+
+Якщо користувач не завантажив аватар, backend повертає default URL.
+
+Default URL задається змінною середовища: DEFAULT_AVATAR_URL.
+
+При реєстрації ми одразу записуємо avatarUrl в БД як default, тому фронт завжди отримує валідний абсолютний URL.
+
+Ендпоінт
+
 PATCH /api/users/avatar
 
-Требования к запросу
+Вимоги до запиту
 
 Content-Type: multipart/form-data
 
-Заголовок авторизации:
-
+Заголовок авторизації:
 Authorization: Bearer <accessToken>
 
+Поле файлу: avatar
 
-Поле файла:
-
-avatar
-
-Пример запроса (curl)
+Приклад запиту (curl)
 curl -X PATCH http://localhost:4000/api/users/avatar \
   -H "Authorization: Bearer <accessToken>" \
   -F "avatar=@avatar.png"
 
-Ответ сервера
+Відповідь сервера
 {
   "id": "uuid",
   "name": "User Name",
@@ -285,23 +286,21 @@ curl -X PATCH http://localhost:4000/api/users/avatar \
   "updatedAt": "..."
 }
 
-ВАЖНО ДЛЯ ФРОНТА
+ВАЖЛИВО ДЛЯ ФРОНТА
 
-avatarUrl — абсолютный URL
+avatarUrl — абсолютний URL (готове посилання).
 
-Это уже готовая ссылка
+❌ Не додавайте API_BASE_URL.
 
-❌ НЕ нужно добавлять API_BASE_URL
+❌ Не робіть трансформацій/склейок.
 
-❌ НЕ нужно ничего преобразовывать
-
-Можно сразу использовать:
+Можна одразу:
 
 <img src={user.avatarUrl} alt="User avatar" />
 
-Next.js: настройка next.config.js
+Next.js: налаштування next.config.js
 
-Так как изображения приходят с Cloudinary, обязательно добавьте домен:
+Оскільки зображення з Cloudinary, додайте домен:
 
 // next.config.js
 module.exports = {
@@ -311,29 +310,19 @@ module.exports = {
 };
 
 
-После этого можно безопасно использовать next/image:
+Після цього можна використовувати next/image:
 
 import Image from 'next/image';
 
-<Image
-  src={user.avatarUrl}
-  alt="Avatar"
-  width={128}
-  height={128}
-/>
+<Image src={user.avatarUrl} alt="Avatar" width={128} height={128} />
 
-Что если пользователь не загрузил аватар
+Якщо користувач не завантажував аватар
 
-В базе avatarUrl = null
+Backend все одно поверне default avatarUrl (з DEFAULT_AVATAR_URL).
 
-Backend не подставляет дефолт
+Тому фронту не обов’язково робити плейсхолдер.
 
-Решение на фронте:
-
-const avatarSrc = user.avatarUrl ?? '/avatar-placeholder.png';
-
-
-(плейсхолдер — ответственность фронта)
+(Опційно) плейсхолдер на фронті можна додати лише як fallback на випадок помилок завантаження картинки (onError).
 
 10) Как увидеть “сколько живет токен” (exp)
 JWT обычно содержит поле exp (unix time).
