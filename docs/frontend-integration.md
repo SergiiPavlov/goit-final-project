@@ -49,6 +49,15 @@
 
 Файл: `.env.local`
 
+### Production (Render)
+- Backend: `https://<ваш-render-домен>.onrender.com`
+
+---
+
+## 3) Переменные окружения для фронта
+
+### Next.js
+Файл: `.env.local`
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
 # или Render URL в проде:

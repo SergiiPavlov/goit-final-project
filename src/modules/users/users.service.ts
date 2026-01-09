@@ -120,7 +120,9 @@ export async function updateAvatarFile(userId: string, input: AvatarUploadInput)
       },
       {
         data: file.data,
-        mime: file.mime,
+        // NOTE: multipart parser exposes `contentType`, not `mime`.
+        // Use computed `mime` to ensure Cloudinary receives a valid data URI media type.
+        mime,
         // stable id makes it easier to overwrite previous avatar
         publicId: `user_${userId}`,
       }

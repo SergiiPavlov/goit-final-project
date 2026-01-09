@@ -33,9 +33,17 @@ export async function uploadImageToCloudinary(
   const timestamp = Math.floor(Date.now() / 1000);
   const folder = cfg.folder || 'avatars';
 
+  // When using a stable public_id (e.g. user_<uuid>) to overwrite avatars, Cloudinary's CDN
+  // may briefly serve cached content. We explicitly enable overwrite + invalidation and
+  // treat any post-upload reachability checks as best-effort (never fatal).
+  const overwrite = 'true';
+  const invalidate = 'true';
+
   const paramsToSign: Record<string, string> = {
     folder,
     timestamp: String(timestamp),
+    overwrite,
+    invalidate,
   };
   if (file.publicId) paramsToSign.public_id = file.publicId;
 
@@ -47,6 +55,8 @@ export async function uploadImageToCloudinary(
     api_key: cfg.apiKey,
     timestamp: String(timestamp),
     folder,
+    overwrite,
+    invalidate,
     signature,
     ...(file.publicId ? { public_id: file.publicId } : {}),
   });
@@ -65,8 +75,28 @@ export async function uploadImageToCloudinary(
     throw new Error(msg);
   }
 
+  const secureUrl: string = json.secure_url || json.url;
+
+  // Best-effort "ping" to reduce the chance the caller immediately hits a stale/404 cached URL.
+  // Never throw here: a transient CDN delay should not turn a successful upload into HTTP 500.
+  // We add a cache-busting query param for the ping only.
+  try {
+    const pingUrl = secureUrl ? `${secureUrl}${secureUrl.includes('?') ? '&' : '?'}t=${Date.now()}` : '';
+    if (pingUrl) {
+      for (let i = 0; i < 6; i++) {
+        // eslint-disable-next-line no-await-in-loop
+        const ok = await fetch(pingUrl, { method: 'HEAD' }).then((r) => r.ok).catch(() => false);
+        if (ok) break;
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((r) => setTimeout(r, 200 * (i + 1)));
+      }
+    }
+  } catch {
+    // ignore
+  }
+
   return {
-    url: json.secure_url || json.url,
+    url: secureUrl,
     publicId: json.public_id,
     bytes: json.bytes,
     width: json.width,
