@@ -8,12 +8,14 @@ export type AuthenticatedRequest = Request & { userId: string };
 export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const header = req.header('authorization') || '';
   const [, token] = header.split(' ');
-  if (!token) {
-    return next(new HttpError(401, 'Missing Authorization header', { code: 'UNAUTHORIZED' }));
+  const cookieToken = req.cookies?.accessToken;
+  const resolvedToken = token || cookieToken;
+  if (!resolvedToken) {
+    return next(new HttpError(401, 'Missing access token', { code: 'UNAUTHORIZED' }));
   }
 
   try {
-    const payload = verifyAccessToken(token);
+    const payload = verifyAccessToken(resolvedToken);
     (req as AuthenticatedRequest).userId = payload.sub;
     return next();
   } catch {
