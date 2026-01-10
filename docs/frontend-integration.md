@@ -1,5 +1,4 @@
-# Frontend Integration Guide (Next.js / Vite) — для команды (версия для начинающих)
-
+# Frontend Integration Guide (Next.js / Vite) — для команды 
 Этот документ для фронтенд-разработчиков (junior / студент).
 Цель: чтобы любой человек из команды мог за 15–30 минут:
 - подключить фронт к нашему backend API,
