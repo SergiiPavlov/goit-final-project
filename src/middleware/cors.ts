@@ -17,7 +17,13 @@ export function corsMiddleware() {
       if (!origin) return cb(null, true);
 
       if (env.corsOrigins.includes(origin)) return cb(null, true);
-      return cb(new Error('Not allowed by CORS'));
+
+      // IMPORTANT:
+      // Do NOT throw on disallowed origins.
+      // If we throw here, Express will treat it as an internal error (500), which breaks
+      // same-site tooling like Swagger UI that may still send the Origin header.
+      // Returning `false` simply disables CORS for this request.
+      return cb(null, false);
     },
     credentials: true,
   };
