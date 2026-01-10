@@ -7,3 +7,6 @@ uploads
 
 # temp
 /tmp/
+
+.cookies.txt
+*.cookies.txt
