@@ -1,338 +1,149 @@
-Frontend Integration Guide (Next.js / Vite) — для команды (версия для начинающих)
+# Frontend Integration Guide (Next.js / Vite)
 
-Этот документ для фронтенд-разработчиков (junior / студент).
-Цель: чтобы любой человек из команды мог за 15–30 минут:
+Цель: чтобы любой человек из команды мог быстро подключить фронт к нашему backend API, настроить авторизацию через cookies и понимать типичные ошибки (401, CORS).
 
-подключить фронт к нашему backend API,
+## 1) Где смотреть API-документацию
 
-настроить авторизацию,
+- Swagger UI: `GET /docs`
+- OpenAPI YAML: `GET /docs/openapi.yaml`
 
-проверить приватные эндпоинты,
+Если Swagger и реальный сервер расходятся — это считается багом: сообщайте backend-команде.
 
-понять частые ошибки (401, CORS, cookies).
+## 2) Base URL (куда фронт шлёт запросы)
 
-0. Что важно понять сразу (1 минута)
-   Как у нас работает авторизация СЕЙЧАС
+Локально (dev):
+- `http://localhost:4000`
 
-Backend использует JWT, но хранит их в cookies:
+Production (Render):
+- `https://<ваш-render-домен>.onrender.com`
 
-cookie accessToken
+## 3) Как у нас работает авторизация
 
-cookie refreshToken
+Backend использует JWT, но **по умолчанию хранит токены в HttpOnly cookies**:
 
-После login/register/refresh backend отправляет в ответе Set-Cookie.
-Браузер сохраняет cookies сам.
+- cookie `accessToken`
+- cookie `refreshToken`
 
-Для приватных запросов НЕ нужно передавать Authorization: Bearer ..., если вы работаете в браузере.
-Вместо этого нужно включить отправку cookies:
+После `login/register/refresh` backend присылает `Set-Cookie`, браузер сохранит cookies автоматически.
 
-Fetch: credentials: 'include'
+### Что должен сделать фронт
 
-Axios: withCredentials: true
+Для **всех** запросов к API, где нужны cookies, включайте отправку cookies:
 
-✅ Это ключевая вещь. Если забыть — будет 401.
+- Fetch: `credentials: 'include'`
+- Axios: `withCredentials: true`
 
-1. Где смотреть документацию API
-   Swagger UI
+Если забыть — будет 401, даже если вы только что логинились.
 
-GET /docs — Swagger UI
+## 4) Переменные окружения
 
-GET /docs/openapi.yaml — YAML контракт
+### Next.js
+`.env.local`
 
-Важно:
-
-Swagger — это ориентир/контракт.
-
-Если Swagger и реальный сервер расходятся — пишем backend-команде.
-
-2. Base URL (куда фронт шлёт запросы)
-   Локально (dev)
-
-Backend: http://localhost:4000
-
-Production (Render)
-
-Backend: https://<ваш-render-домен>.onrender.com
-
-3. Переменные окружения для фронта
-   Next.js
-
-Файл: .env.local
-
+```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
-
-# в проде:
-
+# production:
 # NEXT_PUBLIC_API_BASE_URL=https://<ваш-render-домен>.onrender.com
+```
 
-Команды:
+### Vite
+`.env`
 
-npm i
-npm run dev
-
-Vite
-
-Файл: .env
-
+```env
 VITE_API_BASE_URL=http://localhost:4000
-
-# в проде:
-
+# production:
 # VITE_API_BASE_URL=https://<ваш-render-домен>.onrender.com
+```
 
-Команды:
+## 5) Пример запросов
 
-npm i
-npm run dev
+### Fetch
 
-4. CORS (если фронт и бек на разных доменах)
+```js
+const API_BASE = import.meta.env?.VITE_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL;
 
-Backend использует allow-list через переменную CORS_ORIGINS.
+export async function apiGetCurrentUser() {
+  const res = await fetch(`${API_BASE}/api/users/current`, {
+    method: 'GET',
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+```
 
-Пример для локальной разработки:
+### Axios
 
-CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+```js
+import axios from 'axios';
 
-Next.js dev: http://localhost:3000
-
-Vite dev: http://localhost:5173
-
-Как понять, что это CORS
-
-В консоли браузера будет:
-
-CORS policy: No 'Access-Control-Allow-Origin' header ...
-
-запрос в Network будет заблокирован
-
-Решение:
-
-Добавить домен фронта в CORS_ORIGINS
-
-Перезапустить backend
-
-5. Самое важное для фронта: cookies и credentials
-   Почему это важно
-
-По умолчанию браузер не отправляет cookies на другой домен/порт.
-
-Поэтому все запросы к backend должны быть “с credentials”.
-
-Fetch пример (правильно)
-await fetch(`${API_BASE}/api/users/current`, {
-method: "GET",
-credentials: "include",
+export const api = axios.create({
+  baseURL: import.meta.env?.VITE_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL,
+  withCredentials: true,
 });
 
-Axios пример (правильно)
-axios.defaults.withCredentials = true;
+export async function apiGetCurrentUser() {
+  const { data } = await api.get('/api/users/current');
+  return data;
+}
+```
 
-await axios.get(`${API_BASE}/api/users/current`);
+## 6) Refresh-flow (если сервер вернул 401)
 
-Если забыть credentials/withCredentials → будет 401, даже если пользователь “логинился”.
+Стандартный сценарий:
 
-6. Авторизация: Register / Login
-   Register
+1) На старте приложения вызовите `GET /api/users/current`.
+2) Если получили 401 — сделайте `POST /api/auth/refresh` (тело может быть `{}`), обязательно с cookies.
+3) Если refresh 200 — повторите `GET /api/users/current`.
+4) Если refresh снова 401 — показывайте экран логина.
 
-POST /api/auth/register
+Важно: refreshToken обычно **не передают в body**, backend берёт его из cookie.
 
-Login
+## 7) Tasks: создание и смена статуса
 
-POST /api/auth/login
+Создать задачу:
 
-Что происходит:
+- `POST /api/tasks`
+- Body: `{ "name": string, "date": "YYYY-MM-DD" }`
 
-backend возвращает JSON (user, и иногда токены в теле — это не критично для фронта)
+Сменить статус (основной эндпоинт):
 
-backend ставит cookies через Set-Cookie
+- `PATCH /api/tasks/:id/status`
+- Body: `{ "isDone": boolean }`
 
-браузер сохраняет cookies сам
+Примечание: в проекте может быть сохранён совместимый alias `PATCH /api/tasks/:id`, но фронту рекомендуется использовать `/status`.
 
-✅ После этого можно вызывать приватные эндпоинты (например, /api/users/current) — тоже с credentials.
+## 8) Avatar upload (multipart)
 
-7. Как проверять “залогинен ли пользователь” на фронте
+Endpoint:
 
-Стандартная проверка:
+- `PATCH /api/users/avatar`
+- `Content-Type: multipart/form-data`
+- поле файла: `avatar`
 
-1. При старте приложения
+**Ответ:** `200 text/plain` — строка URL (прямая ссылка на новый аватар).
 
-Вызываем:
-GET /api/users/current (с credentials)
+Что делать на фронте:
 
-200 → пользователь залогинен
+- либо сразу обновить `user.avatarUrl` этим URL в UI,
+- либо после успешной загрузки вызвать `GET /api/users/current` и взять обновлённого пользователя.
 
-401 → нужно refresh / или показать страницу логина
+## 9) CORS (когда фронт и бек на разных доменах/портах)
 
-8. Refresh-flow (если сервер вернул 401)
+Backend использует allow-list через переменную `CORS_ORIGINS`.
 
-Если GET /api/users/current вернул 401:
+Для локальной разработки часто нужно добавить:
 
-Делаем:
-POST /api/auth/refresh (с credentials)
+- Next dev: `http://localhost:3000`
+- Vite dev: `http://localhost:5173`
 
-Важно:
+Пример на бэке:
 
-refreshToken НЕ передаём в body
+```env
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+```
 
-backend берёт refreshToken из cookies
+Признак CORS:
 
-Тело можно отправлять пустым:
-
-{}
-
-Дальше:
-
-Если refresh 200 → повторяем GET /api/users/current
-
-Если refresh снова 401 → делаем logout на фронте (чистим состояние UI) и редирект на /login
-
-9. Приватные эндпоинты (все через cookies)
-
-Примеры:
-
-GET /api/users/current
-
-PATCH /api/tasks/:id
-
-DELETE /api/diaries/:id
-
-GET /api/weeks/current
-
-Во всех запросах:
-
-credentials: "include" / withCredentials: true
-
-10. Weeks — нюанс с dueDate
-    Public week
-
-GET /api/weeks/{weekNumber}
-
-daysToChildbirth появляется только если передать dueDate:
-
-GET /api/weeks/1?dueDate=2026-12-31
-
-Если dueDate не передать — поля не будет. Это нормально.
-
-11. Avatar upload (Cloudinary, multipart)
-    Как работает
-
-backend загружает файл в Cloudinary
-
-в БД хранит полный абсолютный URL
-
-если аватар не загружали — backend возвращает DEFAULT_AVATAR_URL
-
-Endpoint
-
-PATCH /api/users/avatar
-
-Запрос
-
-Content-Type: multipart/form-data
-
-поле файла: avatar
-
-cookies должны отправляться (credentials)
-
-Пример curl:
-
-curl -X PATCH http://localhost:4000/api/users/avatar \
- -b cookies.txt \
- -F "avatar=@avatar.png"
-
-Важно для фронта
-
-avatarUrl — уже готовый URL.
-
-❌ Не добавлять API_BASE_URL
-❌ Не “склеивать” строки
-
-Можно сразу:
-
-<img src={user.avatarUrl} alt="User avatar" />
-
-12. COOKIE_SECURE=false — нужно ли добавлять в ENV?
-
-Да, для локальной разработки по HTTP это правильная настройка.
-
-Смысл:
-
-если COOKIE_SECURE=true, браузер может не принимать cookie на http:// (Secure cookies только для https)
-
-на localhost это часто ломает авторизацию в браузере
-
-Рекомендация:
-
-локально: COOKIE_SECURE=false
-
-прод (https): COOKIE_SECURE=true
-
-13. Как протестировать руками (пошагово)
-
-Запустить backend
-
-Вызвать register/login из фронта (или Postman)
-
-Открыть DevTools → Application → Cookies → убедиться что появились cookies
-
-Сделать GET /api/users/current из фронта (обязательно credentials)
-
-Если 401:
-
-проверь credentials
-
-проверь CORS_ORIGINS
-
-проверь COOKIE_SECURE
-
-14. Bash smoke (локальная проверка cookies-авторизации)
-
-Это тот тест, который ты уже запускал — он правильный.
-Вот компактная версия, которую можно дать команде:
-
-set -euo pipefail
-
-BASE="${BASE:-http://localhost:4000}"
-JAR="${JAR:-/tmp/cookies_test.txt}"
-rm -f "$JAR"
-
-EMAIL="fe*test*$(date +%s)_$RANDOM@example.com"
-PASS="secret123!"
-NAME="FE Test"
-
-echo "== 1) Register (should set cookies) =="
-curl -sS -i -X POST "$BASE/api/auth/register" \
-  -H "Content-Type: application/json" \
-  -c "$JAR" \
- -d "{\"name\":\"$NAME\",\"email\":\"$EMAIL\",\"password\":\"$PASS\"}" \
- | grep -i "set-cookie" || (echo "No Set-Cookie found" && exit 1)
-
-echo "== 2) Current user via cookies =="
-curl -sS -i "$BASE/api/users/current" -b "$JAR" | head -n 25
-
-echo "== 3) Refresh via cookies =="
-curl -sS -i -X POST "$BASE/api/auth/refresh" \
-  -H "Content-Type: application/json" \
-  -b "$JAR" -c "$JAR" \
- -d "{}" | head -n 35
-
-echo "DONE"
-
-15. Частые проблемы (и что делать)
-    “401 Unauthorized”
-
-забыли credentials: include / withCredentials: true
-
-cookie не сохранились из-за COOKIE_SECURE=true на http
-
-CORS не настроен для credentials
-
-“CORS blocked”
-
-добавить домен фронта в CORS_ORIGINS
-
-убедиться, что backend разрешает credentials
-
-“В Swagger не видно cookies”
-
-Swagger не идеален для cookie-flow. Проверяйте через браузер / curl jar.
+- В консоли браузера: `CORS policy: No 'Access-Control-Allow-Origin'...`
+- В Network запрос будет заблокирован.

@@ -15,4 +15,13 @@ tasksRouter.post('/', requireAuth, validateBody(createTaskSchema), asyncHandler(
 tasksRouter.get('/', requireAuth, asyncHandler(tasksController.list));
 
 // Change task status (isDone)
+// NOTE: Mentor feedback / clearer REST semantics: status update is exposed via /:id/status.
+tasksRouter.patch(
+  '/:id/status',
+  requireAuth,
+  validateBody(updateTaskStatusSchema),
+  asyncHandler(tasksController.patchStatus),
+);
+
+// Backward-compatible alias (can be removed once all clients migrate)
 tasksRouter.patch('/:id', requireAuth, validateBody(updateTaskStatusSchema), asyncHandler(tasksController.patchStatus));
