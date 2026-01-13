@@ -8,7 +8,7 @@ Backend API for the **Lehlehka** team project.
 - Seed from JSON data (emotions / mom states / baby states)
 - Auth (access + refresh, sessions stored in DB)
 - Users: get current user, update profile, upload avatar
-- Tasks: create, list by date, update isDone
+- Tasks: create, list by date, update isDone (status)
 - Diaries: create + list by date
 - Reference data: emotions + weeks dashboard
 - Weeks: public week dashboard + private endpoints (current / baby / mom)
@@ -69,12 +69,18 @@ curl -s -X POST http://localhost:4000/api/auth/login \
   -d '{"email":"test@example.com","password":"secret123"}'
 ```
 
+Tip:
+- In browsers, the backend primarily uses **HttpOnly cookies** (`accessToken`, `refreshToken`).
+- For scripts/Postman you can use either cookies or `Authorization: Bearer <ACCESS_TOKEN>`.
+
 Refresh:
 ```bash
 curl -s -X POST http://localhost:4000/api/auth/refresh \
   -H 'Content-Type: application/json' \
   -d '{"refreshToken":"<REFRESH_TOKEN>"}'
 ```
+
+Note: `refreshToken` can be provided either in JSON body (example above) or via cookie.
 
 Logout (invalidate all sessions for the current user):
 ```bash
@@ -83,6 +89,30 @@ curl -s -X POST http://localhost:4000/api/auth/logout \
   -H 'Authorization: Bearer <ACCESS_TOKEN>' \
   -d '{}'
 ```
+
+Create a task:
+```bash
+curl -s -X POST http://localhost:4000/api/tasks \
+  -H 'Authorization: Bearer <ACCESS_TOKEN>' \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Test task","date":"2026-01-13"}'
+```
+
+Update task status (recommended endpoint):
+```bash
+curl -s -X PATCH http://localhost:4000/api/tasks/<TASK_ID>/status \
+  -H 'Authorization: Bearer <ACCESS_TOKEN>' \
+  -H 'Content-Type: application/json' \
+  -d '{"isDone":true}'
+```
+
+Upload avatar:
+```bash
+curl -i -X PATCH http://localhost:4000/api/users/avatar \
+  -H 'Authorization: Bearer <ACCESS_TOKEN>' \
+  -F 'avatar=@./avatar.jpg'
+```
+Response is `text/plain` (a direct URL). If your client needs the updated user object, call `GET /api/users/current`.
 
 ## Smoke tests
 See `docs/smoke.md`.

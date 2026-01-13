@@ -50,7 +50,7 @@ curl -fsS "$BASE_URL/api/tasks?date=$TODAY" \
   -H "Authorization: Bearer $ACCESS" >/dev/null
 
 echo "[smoke] mark task done"
-curl -fsS -X PATCH "$BASE_URL/api/tasks/$TASK_ID" \
+curl -fsS -X PATCH "$BASE_URL/api/tasks/$TASK_ID/status" \
   -H "Authorization: Bearer $ACCESS" \
   -H "Content-Type: application/json" \
   -d '{"isDone":true}' >/dev/null

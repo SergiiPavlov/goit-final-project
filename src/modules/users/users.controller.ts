@@ -20,6 +20,9 @@ export const usersController = {
     const fileBuffer = Buffer.isBuffer(body) ? body : Buffer.from('');
     const contentType = String(req.headers['content-type'] || '');
     const user = await updateAvatarFile(req.userId, { contentType, body: fileBuffer });
-    res.json(user);
+
+    // Mentor feedback: returning the full user object is not required for avatar upload.
+    // Return just the new avatar URL as plain text to keep the contract minimal.
+    res.type('text/plain').send(String(user.avatarUrl ?? ''));
   },
 };
