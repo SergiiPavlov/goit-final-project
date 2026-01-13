@@ -81,6 +81,10 @@ export const api = axios.create({
   baseURL: import.meta.env?.VITE_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL,
   withCredentials: true,
 });
+Axios (правильно)
+js
+Копіювати код
+import axios from "axios";
 
 export async function apiGetCurrentUser() {
   const { data } = await api.get('/api/users/current');
