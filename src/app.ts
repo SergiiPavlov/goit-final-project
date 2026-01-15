@@ -15,7 +15,7 @@ import { usersRouter } from './modules/users/users.router.js';
 import { tasksRouter } from './modules/tasks/tasks.router.js';
 import { diariesRouter } from './modules/diaries/diaries.router.js';
 import { emotionsRouter } from './modules/emotions/emotions.router.js';
-import { weeksRouter } from './modules/weeks/weeks.router.js';
+import weeksRouter from './modules/weeks/weeks.router.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

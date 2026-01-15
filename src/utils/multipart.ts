@@ -43,7 +43,7 @@ export function parseMultipartSingleFile(opts: {
     idx += boundary.length;
     // After boundary there may be -- (end) or CRLF
     let next = body.indexOf(boundary, idx);
-    let nextEnd = body.indexOf(endBoundary, idx);
+    const nextEnd = body.indexOf(endBoundary, idx);
     if (nextEnd !== -1 && (next === -1 || nextEnd < next)) {
       next = nextEnd;
     }

@@ -50,6 +50,9 @@ export async function getWeekDashboardInfo(weekNumber: number) {
       babySize: baby.babySize,
       babyWeight: baby.babyWeight,
       image: baby.image,
+      babyActivity: baby.babyActivity,
+      babyDevelopment: baby.babyDevelopment,
+      interestingFact: baby.interestingFact,
     },
     momTip: {
       dailyTip: momDailyTip,

@@ -18,7 +18,6 @@ async function bootstrap() {
 
     server.close(async (err) => {
       if (err) {
-        // eslint-disable-next-line no-console
         console.error('[lehlehka-backend] http server close error', err);
       }
       await prisma.$disconnect();
@@ -31,7 +30,6 @@ async function bootstrap() {
 }
 
 bootstrap().catch((err) => {
-  // eslint-disable-next-line no-console
   console.error('[lehlehka-backend] failed to start', err);
   process.exit(1);
 });

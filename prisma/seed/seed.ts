@@ -135,9 +135,10 @@ async function seedBabyStates() {
 
 async function main() {
   const [e, m, b] = await Promise.all([seedEmotions(), seedMomStates(), seedBabyStates()]);
-  console.log('[seed] emotions:', e);
-  console.log('[seed] mom states:', m);
-  console.log('[seed] baby states:', b);
+  // eslint in this repo allows only warn/error console methods
+  console.warn('[seed] emotions:', e);
+  console.warn('[seed] mom states:', m);
+  console.warn('[seed] baby states:', b);
 }
 
 main()

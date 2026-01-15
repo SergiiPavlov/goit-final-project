@@ -73,6 +73,26 @@ Tip:
 - In browsers, the backend primarily uses **HttpOnly cookies** (`accessToken`, `refreshToken`).
 - For scripts/Postman you can use either cookies or `Authorization: Bearer <ACCESS_TOKEN>`.
 
+Cookie-based flow (recommended for frontend-like testing):
+```bash
+BASE='http://localhost:4000'
+
+# login and save cookies
+curl -s -c cookies.txt -X POST "$BASE/api/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"owner@example.com","password":"secret123"}' > /dev/null
+
+# private request with cookies
+curl -s -b cookies.txt "$BASE/api/tasks?date=2026-01-15" | cat; echo
+
+# refresh using cookies (empty JSON body is enough)
+curl -s -b cookies.txt -X POST "$BASE/api/auth/refresh" \
+  -H 'Content-Type: application/json' \
+  -d '{}' | cat; echo
+```
+
+Local CORS note (Vite): set `CORS_ORIGINS=http://localhost:5173` (or add it to the list) and keep `COOKIE_SECURE=false`.
+
 Refresh:
 ```bash
 curl -s -X POST http://localhost:4000/api/auth/refresh \
