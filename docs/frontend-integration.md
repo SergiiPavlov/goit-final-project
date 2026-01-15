@@ -1,153 +1,327 @@
-# Frontend Integration Guide (Next.js / Vite)
+Frontend integration guide (Lehlehka API) 0) Терміни та модель доступу
+0.1 Базові URL
 
-Цель: чтобы любой человек из команды мог быстро подключить фронт к нашему backend API, настроить авторизацию через cookies и понимать типичные ошибки (401, CORS).
+API_BASE — базова адреса бекенда без /api в кінці.
 
-## 1) Где смотреть API-документацию
+локально: http://localhost:4000
 
-- Swagger UI: `GET /docs`
-- OpenAPI YAML: `GET /docs/openapi.yaml`
+прод: https://<render-domain>.onrender.com
 
-Если Swagger и реальный сервер расходятся — это считается багом: сообщайте backend-команде.
+Swagger UI: API_BASE/docs
 
-## 2) Base URL (куда фронт шлёт запросы)
+OpenAPI YAML: API_BASE/docs/openapi.yaml
 
-Локально (dev):
-- `http://localhost:4000`
+0.2 Тип авторизації
 
-Production (Render):
-- `https://<ваш-render-домен>.onrender.com`
+Авторизація через HttpOnly cookies: accessToken, refreshToken.
 
-## 3) Как у нас работает авторизация
+Cookies не читаються з JavaScript (це очікувано й правильно).
 
-Backend использует JWT, но **по умолчанию хранит токены в HttpOnly cookies**:
+Для всіх приватних запитів потрібно вмикати відправку cookies:
 
-- cookie `accessToken`
-- cookie `refreshToken`
+fetch: credentials: "include"
 
-После `login/register/refresh` backend присылает `Set-Cookie`, браузер сохранит cookies автоматически.
+axios: withCredentials: true
 
-### Что должен сделать фронт
+1. Перевірка, що бекенд доступний
+   1.1 Health-check
+   BASE="http://localhost:4000"
+   curl -s "$BASE/health" | cat; echo
 
-Для **всех** запросов к API, где нужны cookies, включайте отправку cookies:
+Очікувано: {"ok":true,...}
 
-- Fetch: `credentials: 'include'`
-- Axios: `withCredentials: true`
+1.2 Swagger доступний
 
-Если забыть — будет 401, даже если вы только что логинились.
+Відкрити в браузері:
 
-## 4) Переменные окружения
+http://localhost:4000/docs
 
-### Next.js
-`.env.local`
+2. Swagger: чому просить ID/параметри
 
-```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
-# production:
-# NEXT_PUBLIC_API_BASE_URL=https://<ваш-render-домен>.onrender.com
-```
+Swagger UI генерується з OpenAPI. Якщо в шляху є параметр, Swagger зобов’язаний запросити значення:
 
-### Vite
-`.env`
+GET /api/weeks/{weekNumber} → просить weekNumber
 
-```env
+PATCH /api/tasks/{id}/status → просить id
+
+Це коректно: без параметра URL не формується.
+
+3. Налаштування змінних середовища на фронтенді
+   3.1 Vite
+
+.env
+
 VITE_API_BASE_URL=http://localhost:4000
-# production:
-# VITE_API_BASE_URL=https://<ваш-render-домен>.onrender.com
-```
 
-## 5) Пример запросов
+# prod:
 
-### Fetch
+# VITE_API_BASE_URL=https://<render-domain>.onrender.com
 
-```js
-const API_BASE = import.meta.env?.VITE_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL;
+3.2 Next.js
 
-export async function apiGetCurrentUser() {
-  const res = await fetch(`${API_BASE}/api/users/current`, {
-    method: 'GET',
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-```
+.env.local
 
-### Axios
+NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
 
-```js
-import axios from 'axios';
+# prod:
+
+# NEXT_PUBLIC_API_BASE_URL=https://<render-domain>.onrender.com
+
+3.3 Нормалізація baseURL
+
+Важливо прибрати кінцеві слеші, і переконатися, що немає /api у base.
+
+const rawBase =
+(import.meta as any)?.env?.VITE_API_BASE_URL ??
+process.env.NEXT_PUBLIC_API_BASE_URL;
+
+export const API_BASE = String(rawBase || "").replace(/\/+$/g, "");
+
+Правило:
+
+API_BASE не закінчується на /
+
+API_BASE не містить /api
+
+4. Рекомендований HTTP-клієнт
+   4.1 Axios instance
+   import axios from "axios";
+   import { API_BASE } from "./apiBase";
 
 export const api = axios.create({
-  baseURL: import.meta.env?.VITE_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL,
-  withCredentials: true,
+baseURL: API_BASE,
+withCredentials: true,
+headers: { "Content-Type": "application/json" },
 });
 Axios (правильно)
 js
 Копіювати код
 import axios from "axios";
 
-export async function apiGetCurrentUser() {
-  const { data } = await api.get('/api/users/current');
-  return data;
+4.2 Fetch helper (альтернатива)
+import { API_BASE } from "./apiBase";
+
+export async function authedFetch(input: string, init: RequestInit = {}) {
+const res = await fetch(`${API_BASE}${input}`, {
+...init,
+credentials: "include",
+headers: {
+"Content-Type": "application/json",
+...(init.headers || {}),
+},
+});
+
+return res;
 }
-```
 
-## 6) Refresh-flow (если сервер вернул 401)
+5. Auth: логін і підтримка сесії
+   5.1 Логін
 
-Стандартный сценарий:
+POST /api/auth/login
+Body:
 
-1) На старте приложения вызовите `GET /api/users/current`.
-2) Если получили 401 — сделайте `POST /api/auth/refresh` (тело может быть `{}`), обязательно с cookies.
-3) Если refresh 200 — повторите `GET /api/users/current`.
-4) Если refresh снова 401 — показывайте экран логина.
+{ "email": "owner@example.com", "password": "secret123" }
 
-Важно: refreshToken обычно **не передают в body**, backend берёт его из cookie.
+Успіх:
 
-## 7) Tasks: создание и смена статуса
+відповідь 200
 
-Создать задачу:
+cookies встановлюються через Set-Cookie
 
-- `POST /api/tasks`
-- Body: `{ "name": string, "date": "YYYY-MM-DD" }`
+5.2 Перевірка сесії
 
-Сменить статус (основной эндпоинт):
+GET /api/users/current (потрібні cookies)
 
-- `PATCH /api/tasks/:id/status`
-- Body: `{ "isDone": boolean }`
+5.3 Refresh-flow при 401
 
-Примечание: в проекте может быть сохранён совместимый alias `PATCH /api/tasks/:id`, но фронту рекомендуется использовать `/status`.
+Алгоритм:
 
-## 8) Avatar upload (multipart)
+Виконати приватний запит (наприклад /api/users/current)
 
-Endpoint:
+Якщо 401 → викликати POST /api/auth/refresh (з cookies)
 
-- `PATCH /api/users/avatar`
-- `Content-Type: multipart/form-data`
-- поле файла: `avatar`
+Якщо refresh успішний → повторити початковий запит 1 раз
 
-**Ответ:** `200 text/plain` — строка URL (прямая ссылка на новый аватар).
+Якщо знов 401 → сесія недійсна → UI повертається на логін
 
-Что делать на фронте:
+5.4 Критичний принцип
 
-- либо сразу обновить `user.avatarUrl` этим URL в UI,
-- либо после успешной загрузки вызвать `GET /api/users/current` и взять обновлённого пользователя.
+Якщо не увімкнені cookies (credentials/include або withCredentials), приватні запити завжди будуть 401.
 
-## 9) CORS (когда фронт и бек на разных доменах/портах)
+6. Endpoints: що викликати і як
+   6.1 Weeks (публічні та приватні)
 
-Backend использует allow-list через переменную `CORS_ORIGINS`.
+Публічно
+GET /api/weeks/:weekNumber
 
-Для локальной разработки часто нужно добавить:
+export async function getWeek(weekNumber: number) {
+const { data } = await api.get(`/api/weeks/${weekNumber}`);
+return data;
+}
 
-- Next dev: `http://localhost:3000`
-- Vite dev: `http://localhost:5173`
+Приватно (поточний тиждень користувача)
+GET /api/weeks/current
 
-Пример на бэке:
+export async function getCurrentWeek() {
+const { data } = await api.get(`/api/weeks/current`);
+return data;
+}
 
-```env
-CORS_ORIGINS=http://localhost:3000,http://localhost:5173
-```
+6.2 Tasks
 
-Признак CORS:
+Отримати задачі на дату
+GET /api/tasks?date=YYYY-MM-DD
 
-- В консоли браузера: `CORS policy: No 'Access-Control-Allow-Origin'...`
-- В Network запрос будет заблокирован.
+export async function getTasksByDate(dateISO: string) {
+const { data } = await api.get(`/api/tasks`, { params: { date: dateISO } });
+return data;
+}
+
+Створити задачу
+POST /api/tasks
+Body:
+
+{ "name": "Task name", "date": "2026-01-15" }
+
+export async function createTask(name: string, dateISO: string) {
+const { data } = await api.post(`/api/tasks`, { name, date: dateISO });
+return data;
+}
+
+Змінити статус
+PATCH /api/tasks/:id/status
+Body:
+
+{ "isDone": true }
+
+export async function setTaskDone(taskId: string, isDone: boolean) {
+const { data } = await api.patch(`/api/tasks/${taskId}/status`, { isDone });
+return data;
+}
+
+6.3 Users: профіль і аватар
+
+Поточний користувач
+GET /api/users/current
+
+Завантаження аватара (multipart/form-data)
+PATCH /api/users/avatar
+Поле файлу: avatar
+
+export async function uploadAvatar(file: File) {
+const fd = new FormData();
+fd.append("avatar", file);
+
+const { data } = await api.patch(`/api/users/avatar`, fd, {
+headers: { "Content-Type": "multipart/form-data" },
+});
+
+return data; // за контрактом може бути рядок-URL
+}
+
+7. CORS: вимоги та перевірка
+   7.1 Що потрібно для cookies-auth
+
+Access-Control-Allow-Origin має бути конкретним origin фронта (не \*)
+
+Access-Control-Allow-Credentials: true
+
+Vary: Origin
+
+7.2 Preflight (OPTIONS)
+
+Для запитів із Content-Type: application/json браузер часто робить preflight.
+
+Відповідь на OPTIONS має містити:
+
+Access-Control-Allow-Origin
+
+Access-Control-Allow-Credentials
+
+Access-Control-Allow-Methods (GET/POST/PATCH/DELETE…)
+
+Access-Control-Allow-Headers (наприклад Content-Type, інколи Authorization)
+
+Статус зазвичай: 204 No Content (або 200)
+
+7.3 Команди перевірки CORS (локально)
+BASE="http://localhost:4000"
+ORIGIN="http://localhost:5173"
+
+curl -i "$BASE/api/weeks/40" -H "Origin: $ORIGIN" | sed -n '1,60p'
+
+curl -i -X OPTIONS "$BASE/api/tasks?date=2026-01-15" \
+ -H "Origin: $ORIGIN" \
+ -H "Access-Control-Request-Method: GET" \
+ -H "Access-Control-Request-Headers: Content-Type, Authorization" \
+ | sed -n '1,120p'
+
+8. Типові помилки та діагностика
+   8.1 401 Missing access token
+
+Причини:
+
+запит пішов без cookies
+
+cookies не зберігаються через CORS/SameSite/Secure
+
+приватний запит без логіна
+
+Перевірка:
+
+DevTools → Application → Cookies (домен API): accessToken/refreshToken
+
+Network → Request headers: чи є Cookie: ...
+
+8.2 CORS error у консолі
+
+Причини:
+
+origin фронта не в allowlist на бекенді
+
+OPTIONS не обробляється або без потрібних заголовків
+
+Access-Control-Allow-Origin: \* разом із Allow-Credentials: true (так не можна)
+
+9. Мінімальний робочий сценарій інтеграції
+
+Прописати \*\_API_BASE_URL на локальний бек.
+
+Створити HTTP-клієнт з withCredentials: true.
+
+Реалізувати login(email, password) → POST /api/auth/login.
+
+Після логіна викликати GET /api/users/current і зберегти користувача в state.
+
+Реалізувати refresh на 401: POST /api/auth/refresh → повторити запит 1 раз.
+
+Реалізувати Tasks: GET /api/tasks?date=..., POST /api/tasks, PATCH /api/tasks/:id/status.
+
+Реалізувати Weeks: GET /api/weeks/:weekNumber, GET /api/weeks/current.
+
+Реалізувати Avatar upload: PATCH /api/users/avatar.
+
+Перевірити CORS (GET + OPTIONS) на наявність ACAO/ACAC/Allow-\*.
+
+10. Команди “перед PR / перед релізом” (бекенд)
+    npm run lint
+    npm run build
+    npm run smoke
+
+Призначення:
+
+lint — чистий ESLint
+
+build — перевірка TypeScript
+
+smoke — базова перевірка API-ланцюжків
+
+11. Примітка про прод (frontend domain ≠ backend domain)
+
+Якщо фронт і бек на різних доменах, cookies можуть вимагати:
+
+SameSite=None
+
+Secure=true (лише HTTPS)
+
+Якщо в проді “логін ок, але приватні запити 401” — перше, що перевіряється: чи cookies зберігаються на домені API і чи відправляються в запитах.

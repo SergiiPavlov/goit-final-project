@@ -69,27 +69,37 @@ export async function uploadImageToCloudinary(
     body,
   });
 
-  const json = (await res.json()) as any;
+  type CloudinaryResponse = {
+    secure_url?: string;
+    url?: string;
+    public_id?: string;
+    bytes?: number;
+    width?: number;
+    height?: number;
+    format?: string;
+    error?: { message?: string };
+  };
+
+  const json = (await res.json()) as CloudinaryResponse;
   if (!res.ok) {
     const msg = typeof json?.error?.message === 'string' ? json.error.message : 'Cloudinary upload failed';
     throw new Error(msg);
   }
 
-  const secureUrl: string = json.secure_url || json.url;
+  const secureUrl = json.secure_url ?? json.url;
+  if (!secureUrl || !json.public_id || typeof json.bytes !== 'number') {
+    throw new Error('Cloudinary response missing required fields');
+  }
 
   // Best-effort "ping" to reduce the chance the caller immediately hits a stale/404 cached URL.
   // Never throw here: a transient CDN delay should not turn a successful upload into HTTP 500.
   // We add a cache-busting query param for the ping only.
   try {
-    const pingUrl = secureUrl ? `${secureUrl}${secureUrl.includes('?') ? '&' : '?'}t=${Date.now()}` : '';
-    if (pingUrl) {
-      for (let i = 0; i < 6; i++) {
-        // eslint-disable-next-line no-await-in-loop
-        const ok = await fetch(pingUrl, { method: 'HEAD' }).then((r) => r.ok).catch(() => false);
-        if (ok) break;
-        // eslint-disable-next-line no-await-in-loop
-        await new Promise((r) => setTimeout(r, 200 * (i + 1)));
-      }
+    const pingUrl = `${secureUrl}${secureUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
+    for (let i = 0; i < 6; i++) {
+      const ok = await fetch(pingUrl, { method: 'HEAD' }).then((r) => r.ok).catch(() => false);
+      if (ok) break;
+      await new Promise((r) => setTimeout(r, 200 * (i + 1)));
     }
   } catch {
     // ignore

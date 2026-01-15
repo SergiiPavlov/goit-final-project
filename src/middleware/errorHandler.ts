@@ -27,7 +27,6 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
   // In development we want stack traces in the terminal to debug 500s.
   // Keep the HTTP response generic to avoid leaking internals.
   if (process.env.NODE_ENV !== 'production') {
-    // eslint-disable-next-line no-console
     console.error('[errorHandler]', err);
   }
 

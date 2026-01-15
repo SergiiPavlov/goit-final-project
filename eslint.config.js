@@ -8,14 +8,24 @@ export default [
     files: ["**/*.ts"],
     languageOptions: {
       parserOptions: {
-        project: "./tsconfig.json"
+        // Dedicated TSConfig for ESLint so we can lint non-src TS files
+        // (e.g. prisma/seed) without breaking type-aware linting.
+        project: "./tsconfig.eslint.json"
       }
     },
     rules: {
-      "no-console": ["error", { "allow": ["warn", "error"] }]
+      "no-console": ["error", { "allow": ["warn", "error"] }],
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          "argsIgnorePattern": "^_",
+          "varsIgnorePattern": "^_",
+          "caughtErrorsIgnorePattern": "^_"
+        }
+      ]
     }
   },
   {
-    ignores: ["dist/**", "node_modules/**"]
+    ignores: ["dist/**", "node_modules/**", "coverage/**"]
   }
 ];
