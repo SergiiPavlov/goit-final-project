@@ -377,11 +377,13 @@ components:
         date:
           type: string
           format: date
+          nullable: true
+          description: Applied filter date (YYYY-MM-DD). Null when no filter is used.
         entries:
           type: array
           items:
             $ref: '#/components/schemas/DiaryEntry'
-      required: [date, entries]
+      required: [entries]
 
 paths:
   /health:
@@ -789,16 +791,17 @@ paths:
   /api/diaries:
     get:
       tags: [diaries]
-      summary: Get diary entries for a date (defaults to today)
+      summary: Get diary entries
       security:
         - bearerAuth: []
       parameters:
         - in: query
           name: date
+          required: false
           schema:
             type: string
             format: date
-          description: YYYY-MM-DD
+          description: Optional filter (YYYY-MM-DD). If omitted, returns all diary entries.
       responses:
         '200':
           description: Diary entries list

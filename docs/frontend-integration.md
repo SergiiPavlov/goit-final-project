@@ -93,6 +93,10 @@ baseURL: API_BASE,
 withCredentials: true,
 headers: { "Content-Type": "application/json" },
 });
+Axios (правильно)
+js
+Копіювати код
+import axios from "axios";
 
 4.2 Fetch helper (альтернатива)
 import { API_BASE } from "./apiBase";
