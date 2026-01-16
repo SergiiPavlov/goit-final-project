@@ -74,12 +74,21 @@ export async function createDiaryEntry(userId: string, input: CreateDiaryInput) 
   return mapDiary(entry);
 }
 
-export async function listDiaryEntries(userId: string, dateStr: string) {
-  const date = parseDateYYYYMMDD(dateStr);
+/**
+ * List diary entries for a user.
+ *
+ * If `dateStr` is provided (YYYY-MM-DD) — returns entries only for that date.
+ * If `dateStr` is omitted — returns all entries.
+ */
+export async function listDiaryEntries(userId: string, dateStr?: string) {
+  const where: { userId: string; date?: Date } = { userId };
+  if (typeof dateStr === 'string' && dateStr.length > 0) {
+    where.date = parseDateYYYYMMDD(dateStr);
+  }
 
   const entries = await prisma.diaryEntry.findMany({
-    where: { userId, date },
-    orderBy: [{ createdAt: 'desc' }],
+    where,
+    orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
     include: { emotions: { include: { emotion: true } } },
   });
 
