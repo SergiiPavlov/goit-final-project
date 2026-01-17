@@ -32,6 +32,27 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
 
   const isHttp = err instanceof HttpError;
 
+  const isBodyParserInvalidJson = (
+    e: unknown
+  ): e is SyntaxError & { status: number; type: string; body?: string } => {
+    if (!(e instanceof SyntaxError)) return false;
+    if (typeof e !== 'object' || e === null) return false;
+
+    const rec = e as unknown as Record<string, unknown>;
+    return rec.status === 400 && rec.type === 'entity.parse.failed';
+  };
+
+  // Express/body-parser: invalid JSON payloads reach errorHandler as SyntaxError
+  // with status=400 and type='entity.parse.failed'. Without this branch the API
+  // would incorrectly respond with 500.
+  if (!isHttp && isBodyParserInvalidJson(err)) {
+    res.status(400).json({
+      message: 'Invalid JSON',
+      code: 'INVALID_JSON',
+    } satisfies ErrorResponse);
+    return;
+  }
+
   const status = isHttp ? err.status : 500;
   const payload: ErrorResponse = {
     message: isHttp ? err.message : 'Internal Server Error',
