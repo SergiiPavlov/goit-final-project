@@ -169,11 +169,13 @@ return data;
 
 6.2 Tasks
 
-Отримати задачі на дату
+Отримати задачі (опціонально по даті)
+GET /api/tasks
 GET /api/tasks?date=YYYY-MM-DD
 
-export async function getTasksByDate(dateISO: string) {
-const { data } = await api.get(`/api/tasks`, { params: { date: dateISO } });
+// Якщо date не передати — бек поверне всі задачі користувача (date: null).
+export async function getTasks(dateISO?: string) {
+const { data } = await api.get(`/api/tasks`, { params: dateISO ? { date: dateISO } : undefined });
 return data;
 }
 
