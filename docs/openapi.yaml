@@ -284,11 +284,12 @@ components:
         date:
           type: string
           format: date
+          nullable: true
         tasks:
           type: array
           items:
             $ref: '#/components/schemas/Task'
-      required: [date, tasks]
+      required: [tasks]
 
     EmotionRef:
       type: object
@@ -645,12 +646,13 @@ paths:
   /api/tasks:
     get:
       tags: [tasks]
-      summary: Get tasks for a date (defaults to today)
+      summary: Get tasks (optionally filtered by date)
       security:
         - bearerAuth: []
       parameters:
         - in: query
           name: date
+          required: false
           schema:
             type: string
             format: date

@@ -33,12 +33,17 @@ export async function createTask(userId: string, input: CreateTaskInput) {
   return task;
 }
 
-export async function listTasks(userId: string, dateStr: string) {
-  const date = parseDateYYYYMMDD(dateStr);
+export async function listTasks(userId: string, dateStr?: string) {
+  // dateStr is optional:
+  // - if provided => return tasks for that specific day
+  // - if omitted => return all tasks (frontend can sort/group by date)
+  const where = dateStr
+    ? { userId, date: parseDateYYYYMMDD(dateStr) }
+    : { userId };
 
   const tasks = await prisma.task.findMany({
-    where: { userId, date },
-    orderBy: [{ createdAt: 'asc' }],
+    where,
+    orderBy: [{ date: 'desc' }, { createdAt: 'asc' }],
   });
 
   return tasks;
